@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     id ("kotlin-kapt")
     id ("dagger.hilt.android.plugin")
+    id("com.chaquo.python")
 }
 
 android {
@@ -19,6 +20,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+        ndk {
+            // On Apple silicon, you can omit x86_64.
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -102,3 +107,5 @@ dependencies {
 
     implementation ("com.google.code.gson:gson:2.10.1") //jsonreader
 }
+
+

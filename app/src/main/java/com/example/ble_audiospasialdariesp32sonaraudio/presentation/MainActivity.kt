@@ -31,11 +31,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             BLE_AudioSpasialdariESP32SonarAudioTheme {
-                val  bluetoothViewModel = hiltViewModel<BluetoothLEViewModel>()
                 Navigation(
                     onBluetoothStateChanged = { showBluetoothDialog() },
                     bluetoothAdapter = bluetoothAdapter,
-                    bluetoothLEViewModel = bluetoothViewModel
+                    context = this
                 )
             }
         }

@@ -14,7 +14,10 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-class AudioSpasialManager(context: Context) {
+class AudioSpasialManager(
+    context: Context
+)
+{
 
 
     private val soundPool: SoundPool

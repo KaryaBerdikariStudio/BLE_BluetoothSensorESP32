@@ -4,9 +4,9 @@ import com.example.ble_audiospasialdariesp32sonaraudio.domain.repo.ConnectionSta
 
 data class ESP32DataResult(
     val jarak:Float,
-    val orientasi:FloatArray,
-    val kecepatanPutaran:FloatArray,
-    val kecepatanTranslasi:FloatArray,
+    val kecepatanPutaran:DoubleArray,
+    val kecepatanTranslasi:DoubleArray,
+    val timestamp: Long,
     val connectionState: ConnectionState
 )
 
