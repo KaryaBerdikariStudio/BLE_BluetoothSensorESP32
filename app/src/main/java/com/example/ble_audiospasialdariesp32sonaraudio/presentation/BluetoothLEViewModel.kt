@@ -2,9 +2,7 @@ package com.example.ble_audiospasialdariesp32sonaraudio.presentation
 
 import android.annotation.SuppressLint
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ble_audiospasialdariesp32sonaraudio.datahandler.ble.ESP32DataReceiveManager
@@ -14,7 +12,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -22,55 +19,75 @@ import javax.inject.Inject
 @HiltViewModel
 class BluetoothLEViewModel @Inject constructor(
     private val eSP32DataReceiveManager: ESP32DataReceiveManager
-):ViewModel() {
+) : ViewModel() {
 
-    var initializingMessage by mutableStateOf<String?>(value = "Memulai Aplikasi")
-        private set
+    private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Uninitialized)
+    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
-    var errorMessage by mutableStateOf<String?>(null)
-        private  set
+    private val _initializingMessage = MutableStateFlow<String?>("Memulai Aplikasi")
+    val initializingMessage: StateFlow<String?> = _initializingMessage.asStateFlow()
 
-    var jarak by mutableStateOf(0f)
-        private set
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    var orientasi by mutableStateOf(floatArrayOf(0f, 0f))
-        private set
+    private val _jarak = MutableStateFlow<Float?>(null) // Change back to MutableStateFlow for single latest value
+    val jarak: StateFlow<Float?> = _jarak.asStateFlow() // Expose it as StateFlow for the UI
 
-    var connectionState by mutableStateOf<ConnectionState>(ConnectionState.Uninitialized)
+    private val  _timestamp = MutableStateFlow<Long?>(null)
+    val timestamp: StateFlow<Long?> = _timestamp.asStateFlow()
 
+    private val _kecepatanAngular = MutableStateFlow<DoubleArray?>(null)
+    val kecepatanAngular = _kecepatanAngular.asStateFlow()
+
+    private val _kecepatanAkselerasi = MutableStateFlow<DoubleArray?>(null)
+    val kecepatanAkselerasi = _kecepatanAkselerasi.asStateFlow()
+
+
+    init {
+        subscribeToChanges() // Subscribe immediately on ViewModel creation
+    }
 
     private var hasSubscribed = false
 
-    private fun subscribedToChanges(){
-        Log.d("subskreb", "Result subskreb")
-        viewModelScope.launch{
-            eSP32DataReceiveManager.dataFlow.collect{ result ->
-                when(result){
-                    is Resource.Success ->{
-                        connectionState = result.data.connectionState
-                        jarak = result.data.jarak
-                        orientasi = result.data.orientasi
-                    }
-                    is Resource.Loading ->{
-                        initializingMessage = result.message
-                        connectionState = ConnectionState.Connecting
-                    }
-                    is Resource.Error ->{
-                        errorMessage = result.errorMessage
-                        connectionState = ConnectionState.Uninitialized
+    private fun subscribeToChanges() {
+        if (!hasSubscribed) {
+            hasSubscribed = true
+            viewModelScope.launch {
+                eSP32DataReceiveManager.dataFlow.collect { result ->
+                    when (result) {
+                        is Resource.Success -> {
+                            _connectionState.value = result.data.connectionState
+                            _jarak.value = result.data.jarak // Update the StateFlow with new jarak value
+                            _timestamp.value = result.data.timestamp
+                            _kecepatanAngular.value = result.data.kecepatanPutaran
+                            _kecepatanAkselerasi.value = result.data.kecepatanTranslasi
+
+                            Log.d("BluetoothLEViewModel", "Updated Connection in ViewModel: ${_connectionState.value}")
+                            Log.d("BluetoothLEViewModel", "Updated Jarak in ViewModel: ${jarak.value}")
+                            Log.d("BluetoothLEViewModel", "Updated Gyro in ViewModel: ${_kecepatanAngular.value}")
+                            Log.d("BluetoothLEViewModel", "Updated Gyro in ViewModel: ${_kecepatanAkselerasi.value}")
+
+                        }
+                        is Resource.Loading -> {
+                            _initializingMessage.value = result.message
+                            _connectionState.value = ConnectionState.Connecting
+                        }
+                        is Resource.Error -> {
+                            _errorMessage.value = result.errorMessage
+                            _connectionState.value = ConnectionState.Uninitialized
+                        }
                     }
                 }
             }
         }
     }
 
-
     fun startConnection() {
         eSP32DataReceiveManager.startConnection()
-        subscribedToChanges()
+        subscribeToChanges() // Subscribe to changes on start connection
     }
 
-    fun reconnect(){
+    fun reconnect() {
         eSP32DataReceiveManager.reconnect()
     }
 
@@ -78,8 +95,13 @@ class BluetoothLEViewModel @Inject constructor(
         eSP32DataReceiveManager.disconnect()
     }
 
-    override fun onCleared(){
+    fun closeConnection() {
+        eSP32DataReceiveManager.closeConnection()
+    }
+
+    override fun onCleared() {
         super.onCleared()
         eSP32DataReceiveManager.closeConnection()
     }
 }
+

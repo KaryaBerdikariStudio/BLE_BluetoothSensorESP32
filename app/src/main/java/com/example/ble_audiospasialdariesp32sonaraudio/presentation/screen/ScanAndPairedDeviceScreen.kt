@@ -26,80 +26,52 @@ fun ScanAndPairedDeviceScreen(
     navController: NavController,
     bluetoothLEViewModel: BluetoothLEViewModel = hiltViewModel()
 ) {
+    SystemBroadcastReceiver(systemAction = BluetoothAdapter.ACTION_STATE_CHANGED) { bluetoothState ->
+        val action = bluetoothState?.action ?: return@SystemBroadcastReceiver
+        Log.d("ScanAndPairedScreen", "Bluetooth State Changed: $action")
+        if (action == BluetoothAdapter.ACTION_STATE_CHANGED) {
+            onBluetoothStateChanged()
+        }
+    }
 
-    //Hilangkan Status dan Navigation Bar
+    // Hide Status and Navigation Bar
     val view = LocalView.current
     val window = (view.context as Activity).window
     val insetsController = WindowCompat.getInsetsController(window, view)
-
-    // Mengumpulkan state dari ViewModel
-    val connectionState by remember { mutableStateOf(bluetoothLEViewModel.connectionState) }
-    val initializingMessage by remember { mutableStateOf(bluetoothLEViewModel.initializingMessage) }
 
     insetsController.apply {
         hide(WindowInsetsCompat.Type.systemBars())
         systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
-
-
-
-    Log.d("ScanAndPairedDeviceScreen", "Masuk Halaman Scan And Pair")
-
-    SystemBroadcastReceiver(systemAction = BluetoothAdapter.ACTION_STATE_CHANGED) { bluetoothState ->
-        val action = bluetoothState?.action ?: return@SystemBroadcastReceiver
-        Log.d("ScanAndPairedScree", "Bluetooth State Changed: $action")
-        if (action == BluetoothAdapter.ACTION_STATE_CHANGED) {
-            onBluetoothStateChanged()
-        }
-    }
+    // Observe state from ViewModel
+    val connectionState by bluetoothLEViewModel.connectionState.collectAsState()
+    val initializingMessage by bluetoothLEViewModel.initializingMessage.collectAsState()
 
     LaunchedEffect(Unit) {
         bluetoothLEViewModel.startConnection()
     }
 
-    // LaunchedEffect untuk memantau perubahan connectionState
-    LaunchedEffect(connectionState) {
-        Log.d("Status Koneksi", "Koneksi = $connectionState")
-
-
-        when (connectionState) {
-            ConnectionState.Connected -> {
-                // Pindah ke layar lain saat koneksi berhasil
-                navController.navigate(Screen.DisplayTextScreen.route) {
-                    // Pop up to the start destination, inclusive
-                    popUpTo(Screen.ScanAndPairedDeviceScreen.route) { inclusive = true }
-                }
-            }
-            ConnectionState.Uninitialized -> {
-                // Tampilkan progress indicator saat masih menginisialisasi
-                bluetoothLEViewModel.startConnection()
-            }
-            else -> {
-                // Koneksi lainnya (Connecting/Disconnected), Anda bisa menambahkan logika tambahan jika diperlukan
-               Log.d("test","Aloha")
-            }
+    // Navigate to DisplayTextScreen when connected
+    navController.navigate(Screen.PosisiSampelDataScreen.route) {
+        // Only pop if the previous screen is in the back stack
+        launchSingleTop = true // Ensures only one instance of the destination exists
+        // Use this if you want to avoid duplicate entries in the back stack
+        popUpTo(Screen.ScanAndPairedDeviceScreen.route) {
+            inclusive = true // This will pop the current screen as well
         }
     }
 
-    // Menampilkan CircularProgressIndicator
+    // Show CircularProgressIndicator and initialization message
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator()
-
-        Spacer(Modifier.size(16.dp))
-
-        initializingMessage?.let { Text(text = it) }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+            Spacer(Modifier.size(16.dp))
+            initializingMessage?.let { Text(text = it) }
+        }
     }
-
-    DisposableEffect(
-
-    ) { }
-
-
-    //Tutup koneksi kalau masuk navigasi
-    //memory leak
-
 }
+
